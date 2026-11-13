@@ -51,6 +51,7 @@ description = "Загрузить базу в малом масштабе и в�
 run = '''
 set -e
 client="${CLICKHOUSE_CLIENT:-clickhouse client}"
+echo "ClickHouse $($client --query "SELECT version()")"
 $client --multiquery < schema.sql
 $client --multiquery --param_scale=0.02 < data.sql
 for file in examples/*.sql; do
