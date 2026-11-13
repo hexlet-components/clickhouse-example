@@ -1,8 +1,7 @@
 name: CI
 
-# Тесты стека через задачи mise. В самом шаблоне test заглушка, поэтому здесь
-# job пропускается, а в репозитории из шаблона он красный до первой настройки
-# (AGENTS.md). Линтеры стека идут шагами hk и запускаются в check.yml.
+# Поднимает ClickHouse из compose.yaml, загружает базу в малом масштабе и
+# выполняет все примеры. Версию сервера задаёт CLICKHOUSE_VERSION в .env.
 on:
   push:
     branches:
@@ -20,7 +19,6 @@ permissions: {}
 
 jobs:
   build:
-    if: github.repository != 'hexlet-components/component-template'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -33,4 +31,7 @@ jobs:
       - uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
 
       - run: mise run setup
+      - run: mise run up
       - run: mise run test
+        env:
+          CLICKHOUSE_CLIENT: docker compose exec -T clickhouse clickhouse-client

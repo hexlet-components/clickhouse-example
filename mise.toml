@@ -11,15 +11,53 @@ rumdl = "latest"
 typos = "latest"
 
 # Задачи проекта живут здесь, Makefile только проксирует make <задача> в mise run.
-# Первая настройка (AGENTS.md) ставит зависимости стека в setup перед hk install
-# и заполняет test.
+# Клиент задаёт переменная CLICKHOUSE_CLIENT, по умолчанию это clickhouse client
+# из локальной установки. Для сервера из compose.yaml её значение
+# "docker compose exec -T clickhouse clickhouse-client".
 [tasks.setup]
-description = "Поставить зависимости и git-хуки"
+description = "Поставить git-хуки"
 run = ["hk install"]
 
+[tasks.up]
+description = "Запустить ClickHouse в Docker и дождаться готовности"
+run = "docker compose up --detach --wait"
+
+[tasks.down]
+description = "Остановить ClickHouse в Docker и удалить его данные"
+run = "docker compose down --volumes"
+
+[tasks.load]
+description = "Создать базу board и наполнить её, масштаб задаёт SCALE (по умолчанию 1)"
+run = '''
+set -e
+client="${CLICKHOUSE_CLIENT:-clickhouse client}"
+$client --multiquery < schema.sql
+$client --multiquery --param_scale="${SCALE:-1}" < data.sql
+'''
+
+[tasks.examples]
+description = "Выполнить все примеры и показать результаты"
+run = '''
+set -e
+client="${CLICKHOUSE_CLIENT:-clickhouse client}"
+for file in examples/*.sql; do
+  echo "== $file"
+  $client --multiquery --format PrettyCompactMonoBlock < "$file"
+done
+'''
+
 [tasks.test]
-description = "Тесты стека"
-run = 'echo "test не настроен, см. AGENTS.md" >&2; exit 1'
+description = "Загрузить базу в малом масштабе и выполнить все примеры"
+run = '''
+set -e
+client="${CLICKHOUSE_CLIENT:-clickhouse client}"
+$client --multiquery < schema.sql
+$client --multiquery --param_scale=0.02 < data.sql
+for file in examples/*.sql; do
+  echo "== $file"
+  $client --multiquery --format Null < "$file"
+done
+'''
 
 [tasks.check]
 description = "Все проверки, тот же набор, что гоняет CI"
